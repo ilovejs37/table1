@@ -74,17 +74,6 @@ const App: React.FC = () => {
     }));
   };
 
-  const handleReset = () => {
-    // Reset the entire sequence back to the start
-    setState(prev => ({ 
-      ...prev, 
-      assignedData: [], 
-      currentIndex: 0,
-      previousIndex: 0,
-    }));
-    setInputCount('');
-  };
-
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -153,15 +142,6 @@ const App: React.FC = () => {
                   >
                     <i className="fa-solid fa-rotate-left mr-2"></i>
                     배정 취소
-                  </button>
-                )}
-                {(state.assignedData.length > 0 || state.currentIndex > 0) && (
-                  <button
-                    onClick={handleReset}
-                    className="inline-flex items-center justify-center px-6 py-2 border border-red-200 text-xs font-bold rounded-lg shadow-sm text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-                  >
-                    <i className="fa-solid fa-trash-can mr-2"></i>
-                    순서 리셋
                   </button>
                 )}
               </div>
