@@ -20,12 +20,12 @@ const App: React.FC = () => {
       const data = await fetchTableData();
       setState(prev => ({ ...prev, data, loading: false }));
       
-      // Get AI insights for the hardcoded name
+      // Get AI insights for the retrieved data
       if (data.length > 0) {
         getAiInsights(data);
       }
     } catch (err: any) {
-      setState(prev => ({ ...prev, error: err.message || 'Failed to load data', loading: false }));
+      setState(prev => ({ ...prev, error: err.message || '데이터를 불러오는 데 실패했습니다.', loading: false }));
     }
   }, []);
 
@@ -51,10 +51,10 @@ const App: React.FC = () => {
         <header className="mb-8 text-center sm:text-left flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-              Name Display
+              Supabase Explorer
             </h1>
             <p className="mt-1 text-slate-500 font-medium">
-              출력 결과: <span className="text-indigo-600 font-bold">최성진</span>
+              Source: <code className="bg-slate-200 px-1 rounded text-indigo-600 font-mono text-sm">table1 (column: name)</code>
             </p>
           </div>
           <button
@@ -75,7 +75,7 @@ const App: React.FC = () => {
                 <i className="fa-solid fa-wand-magic-sparkles text-indigo-500 text-xl"></i>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-wider">AI 인사이트</h3>
+                <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-wider">AI 분석 결과</h3>
                 <div className="mt-2 text-sm text-indigo-700 leading-relaxed">
                   <p>{state.aiInsight}</p>
                 </div>
@@ -89,17 +89,28 @@ const App: React.FC = () => {
           {state.loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-              <p className="text-slate-500 animate-pulse font-medium">데이터 로딩 중...</p>
+              <p className="text-slate-500 animate-pulse font-medium">Supabase에서 데이터를 불러오는 중...</p>
+            </div>
+          ) : state.error ? (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-5 rounded-lg flex items-start shadow-sm">
+              <i className="fa-solid fa-circle-exclamation mt-1 mr-4 text-xl"></i>
+              <div>
+                <p className="font-bold">데이터 조회 오류</p>
+                <p className="text-sm mt-1">{state.error}</p>
+                <div className="mt-4 text-xs bg-red-100 p-2 rounded border border-red-200">
+                  <p className="font-mono">Check: Table_URL & Table_KEY environment variables.</p>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="animate-in fade-in duration-500">
               <div className="flex items-center justify-between mb-4 px-2">
                 <span className="text-sm font-semibold text-slate-500">
-                  출력창
+                  조회된 이름 ({state.data.length})
                 </span>
                 <span className="flex items-center text-xs text-green-600 font-bold bg-green-100 px-2 py-1 rounded-full uppercase">
                    <span className="h-2 w-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
-                   Active
+                   실시간 연결됨
                 </span>
               </div>
               <NameList items={state.data} />
@@ -109,7 +120,7 @@ const App: React.FC = () => {
 
         {/* Footer */}
         <footer className="mt-12 text-center text-slate-400 text-sm">
-          <p>&copy; {new Date().getFullYear()} Name Viewer &bull; Built with React & Gemini</p>
+          <p>&copy; {new Date().getFullYear()} Supabase Name Explorer &bull; AI Powered</p>
         </footer>
       </div>
     </div>
