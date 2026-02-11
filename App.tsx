@@ -63,6 +63,9 @@ const App: React.FC = () => {
       assignedData: newAssignedBatch, 
       currentIndex: nextIndex,
     }));
+
+    // Clear input after assignment to show placeholder
+    setInputCount('');
   };
 
   const handleUndoAssignment = () => {
@@ -103,7 +106,7 @@ const App: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div className="flex justify-between items-center">
               <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider">
-                배정 요청 설정
+                배정 요청
               </label>
               <div className="flex items-center gap-2">
                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tight">Next Start</span>
