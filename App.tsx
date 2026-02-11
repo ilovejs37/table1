@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchTableData } from './services/supabaseClient';
+import { fetchTableData, fetchGlobalIndex, updateGlobalIndex } from './services/supabaseClient';
 import { TableItem, AppState } from './types';
 import NameList from './components/NameList';
 
@@ -15,25 +15,35 @@ const App: React.FC = () => {
   });
 
   const [inputCount, setInputCount] = useState<string>('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
+  // Load both names and the current global index from DB
   const loadData = useCallback(async () => {
     setState(prev => ({ 
       ...prev, 
       loading: true, 
       error: null, 
       assignedData: [], 
-      currentIndex: 0,
-      previousIndex: 0
     }));
     try {
-      const data = await fetchTableData();
-      setState(prev => ({ ...prev, data, loading: false }));
+      const [data, dbIndex] = await Promise.all([
+        fetchTableData(),
+        fetchGlobalIndex()
+      ]);
+      
+      setState(prev => ({ 
+        ...prev, 
+        data, 
+        currentIndex: dbIndex,
+        previousIndex: dbIndex,
+        loading: false 
+      }));
     } catch (err: any) {
       setState(prev => ({ ...prev, error: err.message || '데이터를 불러오는 데 실패했습니다.', loading: false }));
     }
   }, []);
 
-  const handleAssign = () => {
+  const handleAssign = async () => {
     const count = parseInt(inputCount);
     if (isNaN(count) || count <= 0) {
       alert('올바른 인원수를 입력해주세요.');
@@ -45,36 +55,57 @@ const App: React.FC = () => {
       return;
     }
 
-    const totalCount = state.data.length;
-    const startIndex = state.currentIndex;
-    const newAssignedBatch: TableItem[] = [];
+    setIsSyncing(true);
+    try {
+      // 1. Get the latest index from DB right before assigning to prevent overwriting other users' progress
+      const latestDbIndex = await fetchGlobalIndex();
+      
+      const totalCount = state.data.length;
+      const newAssignedBatch: TableItem[] = [];
 
-    // Cyclic assignment logic
-    for (let i = 0; i < count; i++) {
-      const targetIndex = (startIndex + i) % totalCount;
-      newAssignedBatch.push(state.data[targetIndex]);
+      // 2. Calculate batch based on the LATEST global index
+      for (let i = 0; i < count; i++) {
+        const targetIndex = (latestDbIndex + i) % totalCount;
+        newAssignedBatch.push(state.data[targetIndex]);
+      }
+
+      const nextIndex = (latestDbIndex + count) % totalCount;
+      
+      // 3. Update DB first
+      await updateGlobalIndex(nextIndex);
+
+      // 4. Update local state
+      setState(prev => ({ 
+        ...prev, 
+        previousIndex: latestDbIndex,
+        assignedData: newAssignedBatch, 
+        currentIndex: nextIndex,
+      }));
+
+      setInputCount('');
+    } catch (err: any) {
+      alert(err.message || '배정 처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsSyncing(false);
     }
-
-    const nextIndex = (startIndex + count) % totalCount;
-    
-    setState(prev => ({ 
-      ...prev, 
-      previousIndex: startIndex, // Store the index before assignment
-      assignedData: newAssignedBatch, 
-      currentIndex: nextIndex,
-    }));
-
-    // Clear input after assignment to show placeholder
-    setInputCount('');
   };
 
-  const handleUndoAssignment = () => {
-    // Revert to the state before the last "Assign" click
-    setState(prev => ({
-      ...prev,
-      currentIndex: prev.previousIndex,
-      assignedData: [],
-    }));
+  const handleUndoAssignment = async () => {
+    setIsSyncing(true);
+    try {
+      // Revert the database index to what it was before this user's last action
+      await updateGlobalIndex(state.previousIndex);
+      
+      setState(prev => ({
+        ...prev,
+        currentIndex: prev.previousIndex,
+        assignedData: [],
+      }));
+    } catch (err: any) {
+      alert('취소 처리에 실패했습니다: ' + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   useEffect(() => {
@@ -93,11 +124,11 @@ const App: React.FC = () => {
           </div>
           <button
             onClick={loadData}
-            disabled={state.loading}
-            className="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md shadow-sm text-slate-700 bg-white hover:bg-slate-50 focus:outline-none transition-all"
+            disabled={state.loading || isSyncing}
+            className="inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md shadow-sm text-slate-700 bg-white hover:bg-slate-50 focus:outline-none transition-all disabled:opacity-50"
           >
-            <i className={`fa-solid fa-sync mr-2 ${state.loading ? 'animate-spin' : ''}`}></i>
-            DB 동기화 & 전체 초기화
+            <i className={`fa-solid fa-sync mr-2 ${(state.loading || isSyncing) ? 'animate-spin' : ''}`}></i>
+            DB 동기화
           </button>
         </header>
 
@@ -109,7 +140,7 @@ const App: React.FC = () => {
                 배정 요청
               </label>
               <div className="flex items-center gap-2">
-                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tight">Next Start</span>
+                 <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-tight">Global Next</span>
                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-md">
                   #{state.currentIndex + 1}
                 </span>
@@ -124,24 +155,26 @@ const App: React.FC = () => {
                 <input
                   type="number"
                   value={inputCount}
+                  disabled={isSyncing}
                   onChange={(e) => setInputCount(e.target.value)}
                   placeholder="배정할 인원수를 입력하세요"
-                  className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm placeholder-slate-400"
+                  className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm placeholder-slate-400 disabled:bg-slate-50"
                 />
               </div>
               <button
                 onClick={handleAssign}
-                disabled={state.loading || !inputCount || state.data.length === 0}
+                disabled={state.loading || !inputCount || state.data.length === 0 || isSyncing}
                 className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-bold rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors disabled:bg-slate-300"
               >
-                배정 실행
+                {isSyncing ? '처리 중...' : '배정 실행'}
               </button>
               
               <div className="flex flex-col gap-2">
                 {state.assignedData.length > 0 && (
                   <button
                     onClick={handleUndoAssignment}
-                    className="inline-flex items-center justify-center px-6 py-2 border border-amber-200 text-xs font-bold rounded-lg shadow-sm text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+                    disabled={isSyncing}
+                    className="inline-flex items-center justify-center px-6 py-2 border border-amber-200 text-xs font-bold rounded-lg shadow-sm text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors disabled:opacity-50"
                   >
                     <i className="fa-solid fa-rotate-left mr-2"></i>
                     배정 취소
@@ -154,8 +187,8 @@ const App: React.FC = () => {
               <div className="flex justify-between items-center text-xs text-slate-400 italic">
                 <p>DB 등록 인원: {state.data.length}명</p>
                 <div className="flex items-center gap-1 text-indigo-500 font-medium not-italic">
-                  <i className="fa-solid fa-circle-info"></i>
-                  <span>순차 배정 중입니다.</span>
+                  <i className="fa-solid fa-globe"></i>
+                  <span>실시간 공유 시스템 활성화</span>
                 </div>
               </div>
             )}
@@ -175,6 +208,7 @@ const App: React.FC = () => {
               <div>
                 <p className="font-bold">데이터 조회 오류</p>
                 <p className="text-sm mt-1">{state.error}</p>
+                <p className="text-xs mt-2 text-red-500 underline">Tip: 'assignment_state' 테이블이 DB에 있는지 확인해주세요.</p>
               </div>
             </div>
           ) : state.assignedData.length > 0 ? (
@@ -199,14 +233,14 @@ const App: React.FC = () => {
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border-2 border-dashed border-slate-200">
               <i className="fa-solid fa-user-plus text-slate-300 text-5xl mb-4"></i>
               <p className="text-slate-400 font-medium text-lg">새로운 배정 요청을 기다리고 있습니다.</p>
-              <p className="text-slate-400 text-sm mt-1">인원수를 입력하고 배정 실행 버튼을 눌러주세요.</p>
+              <p className="text-slate-400 text-sm mt-1">이 시스템은 모든 사용자와 배정 순서를 공유합니다.</p>
             </div>
           )}
         </main>
 
         {/* Footer */}
         <footer className="mt-12 text-center text-slate-400 text-sm">
-          <p>&copy; {new Date().getFullYear()} 기계부 담당자 배정 시스템 &bull; Supabase Backend</p>
+          <p>&copy; {new Date().getFullYear()} 기계부 담당자 배정 시스템 &bull; Supabase Global Sync</p>
         </footer>
       </div>
     </div>
