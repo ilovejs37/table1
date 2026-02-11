@@ -1,21 +1,16 @@
 
-import { createClient } from '@supabase/supabase-js';
 import { TableItem } from '../types';
 
-const supabaseUrl = process.env.Table_URL || '';
-const supabaseKey = process.env.Table_KEY || '';
-
-// Initialize the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseKey);
-
+/**
+ * Note: Supabase fetching is disabled per user request.
+ * Returning static data directly.
+ */
 export const fetchTableData = async (): Promise<TableItem[]> => {
-  const { data, error } = await supabase
-    .from('table1')
-    .select('name');
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data as TableItem[];
+  // Simulate a tiny delay for a natural feel
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  return [{ name: '최성진' }];
 };
+
+// Export an empty object or dummy client to prevent import errors elsewhere if necessary
+export const supabase = {} as any;

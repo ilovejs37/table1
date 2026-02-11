@@ -20,12 +20,12 @@ const App: React.FC = () => {
       const data = await fetchTableData();
       setState(prev => ({ ...prev, data, loading: false }));
       
-      // Once data is loaded, optionally get AI insights
+      // Get AI insights for the hardcoded name
       if (data.length > 0) {
         getAiInsights(data);
       }
     } catch (err: any) {
-      setState(prev => ({ ...prev, error: err.message || 'Failed to fetch data', loading: false }));
+      setState(prev => ({ ...prev, error: err.message || 'Failed to load data', loading: false }));
     }
   }, []);
 
@@ -51,10 +51,10 @@ const App: React.FC = () => {
         <header className="mb-8 text-center sm:text-left flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-              Table Explorer
+              Name Display
             </h1>
             <p className="mt-1 text-slate-500 font-medium">
-              Live data from <code className="bg-slate-200 px-1 rounded text-indigo-600">supabase.table1</code>
+              출력 결과: <span className="text-indigo-600 font-bold">최성진</span>
             </p>
           </div>
           <button
@@ -63,7 +63,7 @@ const App: React.FC = () => {
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-all"
           >
             <i className={`fa-solid fa-rotate mr-2 ${state.loading ? 'animate-spin' : ''}`}></i>
-            Refresh Data
+            새로고침
           </button>
         </header>
 
@@ -75,7 +75,7 @@ const App: React.FC = () => {
                 <i className="fa-solid fa-wand-magic-sparkles text-indigo-500 text-xl"></i>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-wider">AI Insights</h3>
+                <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-wider">AI 인사이트</h3>
                 <div className="mt-2 text-sm text-indigo-700 leading-relaxed">
                   <p>{state.aiInsight}</p>
                 </div>
@@ -89,26 +89,17 @@ const App: React.FC = () => {
           {state.loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-              <p className="text-slate-500 animate-pulse font-medium">Fetching records from Supabase...</p>
-            </div>
-          ) : state.error ? (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-4 rounded-md flex items-center shadow-sm">
-              <i className="fa-solid fa-circle-exclamation mr-3 text-xl"></i>
-              <div>
-                <p className="font-bold">Error encountered</p>
-                <p className="text-sm">{state.error}</p>
-                <p className="text-xs mt-2 opacity-75">Check your 'Table_URL' and 'Table_KEY' environment variables.</p>
-              </div>
+              <p className="text-slate-500 animate-pulse font-medium">데이터 로딩 중...</p>
             </div>
           ) : (
             <div className="animate-in fade-in duration-500">
               <div className="flex items-center justify-between mb-4 px-2">
                 <span className="text-sm font-semibold text-slate-500">
-                  Showing {state.data.length} records
+                  출력창
                 </span>
                 <span className="flex items-center text-xs text-green-600 font-bold bg-green-100 px-2 py-1 rounded-full uppercase">
                    <span className="h-2 w-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
-                   Connected
+                   Active
                 </span>
               </div>
               <NameList items={state.data} />
@@ -118,7 +109,7 @@ const App: React.FC = () => {
 
         {/* Footer */}
         <footer className="mt-12 text-center text-slate-400 text-sm">
-          <p>&copy; {new Date().getFullYear()} Supabase Table Viewer &bull; Built with React & Gemini</p>
+          <p>&copy; {new Date().getFullYear()} Name Viewer &bull; Built with React & Gemini</p>
         </footer>
       </div>
     </div>
