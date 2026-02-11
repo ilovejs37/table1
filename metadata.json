@@ -1,0 +1,5 @@
+{
+  "name": "Supabase Table Explorer",
+  "description": "A modern data dashboard that fetches and displays names from a Supabase table with AI-powered insights using Gemini.",
+  "requestFramePermissions": []
+}
