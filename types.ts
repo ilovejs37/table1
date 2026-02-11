@@ -5,8 +5,9 @@ export interface TableItem {
 
 export interface AppState {
   data: TableItem[];
+  assignedData: TableItem[];
+  currentIndex: number;
+  previousIndex: number;
   loading: boolean;
   error: string | null;
-  aiInsight: string | null;
-  aiLoading: boolean;
 }
